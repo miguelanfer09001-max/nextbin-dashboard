@@ -18,9 +18,14 @@
             --neon-cyan: #00f0ff;
             --neon-amber: #ffb700;
             --neon-pink: #ff0055;
-            --neon-green: #00ff9f;
             --cyber-bg: #050811;
             --panel-bg: rgba(13, 19, 33, 0.75);
+        }
+
+        /* Ocultar cursor nativo para usar el cibernético (excepto en móviles) */
+        @media (pointer: fine) {
+            body { cursor: none; }
+            a, button, input { cursor: none; }
         }
 
         body {
@@ -33,11 +38,13 @@
                 linear-gradient(90deg, rgba(255, 183, 0, 0.03) 1px, transparent 1px);
             background-size: 100% 100%, 30px 30px, 30px 30px;
             background-attachment: fixed;
+            overflow-x: hidden;
         }
 
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
         .font-mono-tech { font-family: 'Share Tech Mono', monospace; }
 
+        /* Estilos del Panel HUD */
         .hud-panel {
             background: var(--panel-bg);
             backdrop-filter: blur(12px);
@@ -54,26 +61,54 @@
             background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
         }
 
+        /* Esquinas cibernéticas */
         .hud-corner-tl { position: absolute; top: 4px; left: 4px; width: 8px; height: 8px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
         .hud-corner-tr { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-top: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
         .hud-corner-bl { position: absolute; bottom: 4px; left: 4px; width: 8px; height: 8px; border-bottom: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
         .hud-corner-br { position: absolute; bottom: 4px; right: 4px; width: 8px; height: 8px; border-bottom: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
 
+        /* Efectos Neón */
         .glow-cyan { text-shadow: 0 0 10px rgba(0, 240, 255, 0.7), 0 0 20px rgba(0, 240, 255, 0.4); }
         .glow-amber { text-shadow: 0 0 10px rgba(255, 183, 0, 0.8), 0 0 20px rgba(255, 183, 0, 0.4); }
         .border-glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.1); }
 
+        /* Filtro de pantalla CRT */
         .scanline {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, transparent, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25));
             background-size: 100% 4px; pointer-events: none; z-index: 50; opacity: 0.6;
         }
 
+        /* Notificaciones flotantes */
         #toast-cyber { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(100px); opacity: 0; }
         #toast-cyber.active { transform: translateY(0); opacity: 1; }
+
+        /* CURSOR CIBERNÉTICO */
+        #cursor-dot {
+            position: fixed; top: 0; left: 0; width: 6px; height: 6px;
+            background-color: var(--neon-cyan); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 9999;
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+        #cursor-outline {
+            position: fixed; top: 0; left: 0; width: 30px; height: 30px;
+            border: 1px solid var(--neon-amber); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 9998;
+            transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s;
+        }
+        #cursor-outline.hover-state {
+            width: 45px; height: 45px;
+            background-color: rgba(0, 240, 255, 0.1);
+            border-color: var(--neon-cyan);
+        }
     </style>
 </head>
-<body class="min-h-screen p-3 sm:p-6 lg:p-10 relative overflow-x-hidden">
+<body class="min-h-screen p-3 sm:p-6 lg:p-10 relative">
+    
+    <!-- Elementos del Cursor Custom -->
+    <div class="hidden sm:block" id="cursor-dot"></div>
+    <div class="hidden sm:block" id="cursor-outline"></div>
+
     <div class="scanline"></div>
 
     <!-- Notification Toast -->
@@ -105,24 +140,24 @@
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">CÓDIGO // TEXTO DEL QR:</label>
-                    <input type="text" id="input-qr-codigo" placeholder="Ej: n0jNllSrAJLc7mU5dTq1.085870890802" 
-                        class="w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                    <input type="text" id="input-qr-codigo" placeholder="Ej: n0jNllSrAJLc7mU5dTq1..." 
+                        class="cursor-interact w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">NOMBRE COMPLETO:</label>
                     <input type="text" id="input-qr-nombre" placeholder="Ej: Miguel Fernández" 
-                        class="w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                        class="cursor-interact w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
                 </div>
             </div>
 
             <div class="flex justify-end gap-3">
-                <button onclick="cerrarModal('modal-qr')" class="px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
-                <button id="btn-guardar-qr" class="px-5 py-2 rounded font-orbitron font-bold text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-400 hover:bg-cyan-400 hover:text-slate-950 transition-all uppercase glow-cyan">Guardar Registro</button>
+                <button onclick="cerrarModal('modal-qr')" class="cursor-interact px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
+                <button id="btn-guardar-qr" class="cursor-interact px-5 py-2 rounded font-orbitron font-bold text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-400 hover:bg-cyan-400 hover:text-slate-950 transition-all uppercase glow-cyan">Guardar Registro</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: VINCULACIÓN POR PIN (RUTA 2) -->
+    <!-- MODAL 2: VINCULACIÓN POR PIN (RUTA 2) SECRETO -->
     <div id="modal-pin" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden p-4">
         <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan">
             <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
@@ -132,29 +167,30 @@
                 <h3 class="font-orbitron text-lg font-bold text-amber-400 glow-amber flex items-center gap-2">
                     <span>🔑</span> VINCULAR CON PIN
                 </h3>
-                <span class="text-[10px] font-mono-tech text-amber-400 bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 rounded">DESDE LA CANECA</span>
+                <span class="text-[10px] font-mono-tech text-amber-400 bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 rounded">MODO SEGURO</span>
             </div>
 
             <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
-                Ingrese los 4 dígitos generados en la pantalla LCD de la caneca para vincular su carnet:
+                Ingrese el código secreto de 4 dígitos generado en la pantalla de la caneca:
             </p>
 
             <div class="space-y-4 mb-6">
                 <div>
-                    <label class="block text-[11px] font-mono-tech text-amber-400 mb-1">PIN DE 4 DÍGITOS:</label>
-                    <input type="text" id="input-pin-codigo" maxlength="4" placeholder="Ej: 4821" 
-                        class="w-full bg-slate-900 border border-amber-500/40 rounded px-4 py-2.5 text-amber-300 font-orbitron tracking-widest text-center text-lg focus:outline-none focus:border-amber-400">
+                    <label class="block text-[11px] font-mono-tech text-amber-400 mb-1">PIN SECRETO (4 DÍGITOS):</label>
+                    <!-- Type password para que no lo vean los de atrás -->
+                    <input type="password" id="input-pin-codigo" maxlength="4" placeholder="****" 
+                        class="cursor-interact w-full bg-slate-900 border border-amber-500/40 rounded px-4 py-2.5 text-amber-300 font-orbitron tracking-widest text-center text-xl focus:outline-none focus:border-amber-400">
                 </div>
                 <div>
                     <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">NOMBRE COMPLETO:</label>
                     <input type="text" id="input-pin-nombre" placeholder="Ej: Pedrito Pérez" 
-                        class="w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                        class="cursor-interact w-full bg-slate-900 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
                 </div>
             </div>
 
             <div class="flex justify-end gap-3">
-                <button onclick="cerrarModal('modal-pin')" class="px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
-                <button id="btn-guardar-pin" class="px-5 py-2 rounded font-orbitron font-bold text-xs bg-amber-500/20 text-amber-300 border border-amber-400 hover:bg-amber-400 hover:text-slate-950 transition-all uppercase glow-amber">Vincular Carnet</button>
+                <button onclick="cerrarModal('modal-pin')" class="cursor-interact px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
+                <button id="btn-guardar-pin" class="cursor-interact px-5 py-2 rounded font-orbitron font-bold text-xs bg-amber-500/20 text-amber-300 border border-amber-400 hover:bg-amber-400 hover:text-slate-950 transition-all uppercase glow-amber">Autorizar</button>
             </div>
         </div>
     </div>
@@ -177,26 +213,26 @@
                     </p>
                 </div>
 
-                <!-- DUAL REGISTRATION SYSTEM BUTTONS -->
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <button onclick="abrirModal('modal-qr')" class="flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/10 border border-cyan-500/60 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-500/20 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2">
+                    <button onclick="abrirModal('modal-qr')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/10 border border-cyan-500/60 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-500/20 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2">
                         <span>📝</span> PRE-REGISTRAR (QR)
                     </button>
-                    <button onclick="abrirModal('modal-pin')" class="flex-1 sm:flex-none px-4 py-3 rounded bg-amber-500/10 border border-amber-500/60 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-500/20 transition-all tracking-wider glow-amber flex items-center justify-center gap-2">
-                        <span>🔑</span> VINCULAR CON PIN
+                    <!-- Botón fijo para los que ya saben su pin y quieren entrar directo -->
+                    <button onclick="abrirModal('modal-pin')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-amber-500/10 border border-amber-500/60 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-500/20 transition-all tracking-wider glow-amber flex items-center justify-center gap-2">
+                        <span>🔑</span> INGRESAR PIN SECRETO
                     </button>
                 </div>
             </div>
         </header>
 
-        <!-- BANNER CARNETS NUEVOS -->
+        <!-- BANNER CARNETS NUEVOS (PIN OCULTO) -->
         <div id="contenedor-pendientes" class="hud-panel p-4 hidden border-amber-500/40 bg-amber-500/5">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <span class="text-amber-400 font-bold text-lg">⚠️</span>
+                    <span class="text-amber-400 font-bold text-lg animate-pulse">⚠️</span>
                     <div>
-                        <div class="text-xs font-orbitron font-bold text-amber-300">CARNETS NUEVOS ESPERANDO REGISTRO</div>
-                        <div class="text-[11px] font-mono-tech text-slate-400">Carnets escaneados en la caneca sin nombre asignado:</div>
+                        <div class="text-xs font-orbitron font-bold text-amber-300">CARNETS NUEVOS EN ZONA DE ESPERA</div>
+                        <div class="text-[11px] font-mono-tech text-slate-400">Hay carnets escaneados en la caneca que requieren vinculación.</div>
                     </div>
                 </div>
                 <div id="lista-pins-pendientes" class="flex flex-wrap gap-2"></div>
@@ -228,7 +264,9 @@
                     </thead>
                     <tbody id="tabla-body" class="divide-y divide-slate-800/80 font-mono-tech text-sm">
                         <tr>
-                            <td colspan="4" class="text-center py-12 text-slate-500 font-mono-tech">CARGANDO DATOS...</td>
+                            <td colspan="4" class="text-center py-12 text-slate-500 font-mono-tech">
+                                <div class="inline-block animate-spin mr-2">⚙</div> CARGANDO DATA NEURAL...
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -237,6 +275,40 @@
     </div>
 
     <script>
+        // ==========================================
+        // LÓGICA DEL CURSOR CYBERPUNK
+        // ==========================================
+        const dot = document.getElementById('cursor-dot');
+        const outline = document.getElementById('cursor-outline');
+        
+        window.addEventListener('mousemove', (e) => {
+            // Movimiento instantáneo del punto
+            dot.style.left = `${e.clientX}px`;
+            dot.style.top = `${e.clientY}px`;
+            
+            // Movimiento fluido/retrasado del anillo
+            outline.animate({
+                left: `${e.clientX}px`,
+                top: `${e.clientY}px`
+            }, { duration: 400, fill: "forwards" });
+        });
+
+        // Aplicar hover-state a elementos interactivos dinámicamente
+        function rebindCursorHover() {
+            document.querySelectorAll('.cursor-interact, button, input').forEach(el => {
+                // Evitamos duplicar eventos
+                if(!el.dataset.cursorBound) {
+                    el.addEventListener('mouseenter', () => outline.classList.add('hover-state'));
+                    el.addEventListener('mouseleave', () => outline.classList.remove('hover-state'));
+                    el.dataset.cursorBound = "true";
+                }
+            });
+        }
+        rebindCursorHover(); // Llamada inicial
+
+        // ==========================================
+        // LÓGICA DE SUPABASE Y DATOS
+        // ==========================================
         const SUPABASE_URL = 'https://eucyvoybdfdowspzkjvz.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU';
 
@@ -249,10 +321,16 @@
             setTimeout(() => { toast.classList.remove('active'); }, 4000);
         }
 
-        function abrirModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function cerrarModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function abrirModal(id) { 
+            document.getElementById(id).classList.remove('hidden'); 
+            // Limpiar inputs al abrir
+            if(id === 'modal-pin') document.getElementById('input-pin-codigo').value = '';
+        }
+        function cerrarModal(id) { 
+            document.getElementById(id).classList.add('hidden'); 
+        }
 
-        // MANEJADOR RUTA 1: PRE-REGISTRO QR
+        // RUTA 1: PRE-REGISTRO QR
         document.getElementById('btn-guardar-qr').addEventListener('click', async () => {
             const cardId = document.getElementById('input-qr-codigo').value.trim();
             const nombre = document.getElementById('input-qr-nombre').value.trim();
@@ -276,7 +354,7 @@
             }
         });
 
-        // MANEJADOR RUTA 2: VINCULACIÓN POR PIN
+        // RUTA 2: VINCULACIÓN POR PIN (SEGURO)
         document.getElementById('btn-guardar-pin').addEventListener('click', async () => {
             const pin = document.getElementById('input-pin-codigo').value.trim();
             const nombre = document.getElementById('input-pin-nombre').value.trim();
@@ -292,7 +370,7 @@
             });
 
             if (error || !exito) {
-                showToast('PIN incorrecto o expirado');
+                showToast('PIN incorrecto o expirado. Verifique la pantalla.');
             } else {
                 cerrarModal('modal-pin');
                 showToast(`¡Carnet vinculado a ${nombre}!`);
@@ -313,39 +391,70 @@
             const listaPendientes = document.getElementById('lista-pins-pendientes');
             listaPendientes.innerHTML = '';
             let hayPendientes = false;
+            let contadorPendientes = 0;
 
             data.forEach((estudiante, index) => {
                 const esNuevo = estudiante.nombre === 'Usuario Nuevo' || !estudiante.nombre;
 
                 if (esNuevo && estudiante.pin) {
                     hayPendientes = true;
-                    listaPendientes.innerHTML += `
-                        <button onclick="document.getElementById('input-pin-codigo').value='${estudiante.pin}'; abrirModal('modal-pin');" 
-                            class="px-2.5 py-1 rounded bg-amber-500/20 border border-amber-400 text-amber-300 font-orbitron text-xs">
-                            PIN: ${estudiante.pin}
-                        </button>
-                    `;
+                    contadorPendientes++;
                 }
 
-                const displayNombre = esNuevo ? `Usuario Nuevo (PIN: ${estudiante.pin || '----'})` : estudiante.nombre;
+                let rankBadge = `<span class="text-slate-500 font-bold">#${index + 1}</span>`;
+                let rowBgClass = 'hover:bg-cyan-500/5 transition-colors';
+                
+                if (index === 0 && !esNuevo) {
+                    rankBadge = `<span class="px-2.5 py-1 rounded bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold font-orbitron text-xs glow-amber">👑 #1 RANK</span>`;
+                    rowBgClass = 'bg-amber-500/5 hover:bg-amber-500/10 transition-colors border-l-2 border-amber-400';
+                }
+
+                // 🔥 SEGURIDAD MÁXIMA: Ocultar nombre y PIN en la UI pública
+                const displayNombre = esNuevo ? `Usuario Pendiente ⚠️` : estudiante.nombre;
+                const nameColor = esNuevo ? 'text-amber-400 font-bold italic' : 'text-slate-200 font-bold';
 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-cyan-500/5 transition-colors">
-                        <td class="py-4 px-4 font-mono-tech">#${index + 1}</td>
+                    <tr class="${rowBgClass}">
+                        <td class="py-4 px-4 font-mono-tech">${rankBadge}</td>
                         <td class="py-4 px-4">
-                            <div class="${esNuevo ? 'text-amber-400 font-bold' : 'text-slate-200'}">${displayNombre}</div>
-                            <div class="text-[11px] text-slate-500 font-mono-tech">ID // ${estudiante.id}</div>
+                            <div class="${nameColor} tracking-wide">${displayNombre}</div>
+                            <div class="text-[10px] text-slate-500 font-mono-tech uppercase tracking-widest mt-1">ID // ${estudiante.id.substring(0, 15)}...</div>
                         </td>
-                        <td class="py-4 px-4 text-center font-bold text-slate-300">${estudiante.botellas || 0} 🍾</td>
-                        <td class="py-4 px-4 text-right font-orbitron font-extrabold text-cyan-400 glow-cyan">+${estudiante.puntos || 0} PTS</td>
+                        <td class="py-4 px-4 text-center font-bold text-slate-300">
+                            <span class="bg-slate-900/90 px-3 py-1 rounded border border-slate-700/60 font-mono-tech">${estudiante.botellas || 0} 🍾</span>
+                        </td>
+                        <td class="py-4 px-4 text-right font-orbitron font-black text-cyan-400 glow-cyan tracking-widest text-lg">
+                            +${estudiante.puntos || 0} <span class="text-[10px] text-slate-400 font-mono-tech">PTS</span>
+                        </td>
                     </tr>
                 `;
             });
 
+            // Si hay carnets pendientes, mostramos UN SOLO botón llamativo en el banner
+            if (hayPendientes) {
+                listaPendientes.innerHTML = `
+                    <button onclick="abrirModal('modal-pin')" 
+                        class="cursor-interact px-4 py-2 rounded bg-amber-500/20 border border-amber-400 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-400 hover:text-black transition-all glow-amber shadow-[0_0_15px_rgba(255,183,0,0.3)]">
+                        🔑 HAY ${contadorPendientes} CARNET(S) ESPERANDO - INGRESAR PIN SECRETO
+                    </button>
+                `;
+            }
+
             document.getElementById('contenedor-pendientes').classList.toggle('hidden', !hayPendientes);
+            
+            // Re-asignar eventos del cursor a los botones nuevos generados dinámicamente
+            rebindCursorHover();
         }
 
-        _supabase.channel('estudiantes-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'estudiantes' }, () => cargarRanking()).subscribe();
+        // Suscripción en tiempo real
+        _supabase.channel('estudiantes-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'estudiantes' }, () => {
+                cargarRanking();
+                showToast('Base de datos sincronizada en tiempo real');
+            })
+            .subscribe();
+
+        // Carga inicial
         cargarRanking();
     </script>
 </body>
