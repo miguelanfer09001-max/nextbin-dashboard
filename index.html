@@ -19,7 +19,7 @@
             --neon-amber: #ffb700;
             --neon-pink: #ff0055;
             --cyber-bg: #050811;
-            --panel-bg: rgba(13, 19, 33, 0.75);
+            --panel-bg: rgba(13, 19, 33, 0.70);
         }
 
         /* Ocultar cursor nativo para usar el cibernético (excepto en móviles) */
@@ -32,11 +32,13 @@
             background-color: var(--cyber-bg);
             color: #e2e8f0;
             font-family: 'Rajdhani', sans-serif;
+            
+            /* 1. Filtro ultra-oscuro para lectura, 2. Foto real de ciudad Cyberpunk */
             background-image: 
-                radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 70%),
-                linear-gradient(rgba(255, 183, 0, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 183, 0, 0.03) 1px, transparent 1px);
-            background-size: 100% 100%, 30px 30px, 30px 30px;
+                linear-gradient(to bottom, rgba(5, 8, 17, 0.88), rgba(5, 8, 17, 0.95)),
+                url('https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
             background-attachment: fixed;
             overflow-x: hidden;
         }
@@ -47,8 +49,8 @@
         /* Estilos del Panel HUD */
         .hud-panel {
             background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 240, 255, 0.15);
             clip-path: polygon(
                 0 15px, 15px 0, calc(100% - 15px) 0, 100% 15px, 
                 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px)
@@ -72,7 +74,7 @@
         .glow-amber { text-shadow: 0 0 10px rgba(255, 183, 0, 0.8), 0 0 20px rgba(255, 183, 0, 0.4); }
         .border-glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.1); }
 
-        /* Filtro de pantalla CRT */
+        /* Filtro de pantalla CRT (Las líneas de monitor antiguo) */
         .scanline {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(to bottom, transparent, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25));
@@ -101,10 +103,32 @@
             background-color: rgba(0, 240, 255, 0.1);
             border-color: var(--neon-cyan);
         }
+
+        /* === SISTEMA DE LLUVIA ANIMADA === */
+        #rain-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; /* Detrás de las ventanas, encima del fondo oscuro */
+            pointer-events: none; overflow: hidden;
+        }
+        .raindrop {
+            position: absolute;
+            bottom: 100%;
+            width: 1.5px;
+            /* La gota es un degradado cyan para que brille al caer */
+            background: linear-gradient(to bottom, rgba(0, 240, 255, 0), rgba(0, 240, 255, 0.6));
+            animation: rain-fall linear infinite;
+        }
+        @keyframes rain-fall {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(110vh); }
+        }
     </style>
 </head>
 <body class="min-h-screen p-3 sm:p-6 lg:p-10 relative">
     
+    <!-- Contenedor del Clima (Lluvia) -->
+    <div id="rain-container"></div>
+
     <!-- Elementos del Cursor Custom -->
     <div class="hidden sm:block" id="cursor-dot"></div>
     <div class="hidden sm:block" id="cursor-outline"></div>
@@ -177,7 +201,6 @@
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-[11px] font-mono-tech text-amber-400 mb-1">PIN SECRETO (4 DÍGITOS):</label>
-                    <!-- Type password para que no lo vean los de atrás -->
                     <input type="password" id="input-pin-codigo" maxlength="4" placeholder="****" 
                         class="cursor-interact w-full bg-slate-900 border border-amber-500/40 rounded px-4 py-2.5 text-amber-300 font-orbitron tracking-widest text-center text-xl focus:outline-none focus:border-amber-400">
                 </div>
@@ -217,7 +240,7 @@
                     <button onclick="abrirModal('modal-qr')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/10 border border-cyan-500/60 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-500/20 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2">
                         <span>📝</span> PRE-REGISTRAR (QR)
                     </button>
-                    <!-- Botón fijo para los que ya saben su pin y quieren entrar directo -->
+                    <!-- Botón fijo para los que ya saben su pin -->
                     <button onclick="abrirModal('modal-pin')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-amber-500/10 border border-amber-500/60 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-500/20 transition-all tracking-wider glow-amber flex items-center justify-center gap-2">
                         <span>🔑</span> INGRESAR PIN SECRETO
                     </button>
@@ -276,27 +299,53 @@
 
     <script>
         // ==========================================
+        // LÓGICA DE LA LLUVIA GENERADA EN JS
+        // ==========================================
+        function createRain() {
+            const rainContainer = document.getElementById('rain-container');
+            const dropCount = 70; // Cantidad de gotas simultáneas
+
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.classList.add('raindrop');
+                
+                // Posición horizontal aleatoria
+                drop.style.left = `${Math.random() * 100}vw`;
+                
+                // Duración y retraso aleatorio para que se vea natural
+                const fallDuration = Math.random() * 1.5 + 0.5; // Entre 0.5s y 2.0s
+                const fallDelay = Math.random() * 2; // Retraso de inicio
+
+                drop.style.animationDuration = `${fallDuration}s`;
+                drop.style.animationDelay = `${fallDelay}s`;
+
+                // Algunas gotas son más grandes o transparentes para dar efecto de profundidad
+                drop.style.opacity = Math.random() * 0.7 + 0.3;
+                drop.style.height = `${Math.random() * 25 + 10}px`;
+
+                rainContainer.appendChild(drop);
+            }
+        }
+        createRain(); // Iniciar lluvia
+
+        // ==========================================
         // LÓGICA DEL CURSOR CYBERPUNK
         // ==========================================
         const dot = document.getElementById('cursor-dot');
         const outline = document.getElementById('cursor-outline');
         
         window.addEventListener('mousemove', (e) => {
-            // Movimiento instantáneo del punto
             dot.style.left = `${e.clientX}px`;
             dot.style.top = `${e.clientY}px`;
             
-            // Movimiento fluido/retrasado del anillo
             outline.animate({
                 left: `${e.clientX}px`,
                 top: `${e.clientY}px`
             }, { duration: 400, fill: "forwards" });
         });
 
-        // Aplicar hover-state a elementos interactivos dinámicamente
         function rebindCursorHover() {
             document.querySelectorAll('.cursor-interact, button, input').forEach(el => {
-                // Evitamos duplicar eventos
                 if(!el.dataset.cursorBound) {
                     el.addEventListener('mouseenter', () => outline.classList.add('hover-state'));
                     el.addEventListener('mouseleave', () => outline.classList.remove('hover-state'));
@@ -304,7 +353,7 @@
                 }
             });
         }
-        rebindCursorHover(); // Llamada inicial
+        rebindCursorHover();
 
         // ==========================================
         // LÓGICA DE SUPABASE Y DATOS
@@ -323,7 +372,6 @@
 
         function abrirModal(id) { 
             document.getElementById(id).classList.remove('hidden'); 
-            // Limpiar inputs al abrir
             if(id === 'modal-pin') document.getElementById('input-pin-codigo').value = '';
         }
         function cerrarModal(id) { 
@@ -409,7 +457,6 @@
                     rowBgClass = 'bg-amber-500/5 hover:bg-amber-500/10 transition-colors border-l-2 border-amber-400';
                 }
 
-                // 🔥 SEGURIDAD MÁXIMA: Ocultar nombre y PIN en la UI pública
                 const displayNombre = esNuevo ? `Usuario Pendiente ⚠️` : estudiante.nombre;
                 const nameColor = esNuevo ? 'text-amber-400 font-bold italic' : 'text-slate-200 font-bold';
 
@@ -430,7 +477,6 @@
                 `;
             });
 
-            // Si hay carnets pendientes, mostramos UN SOLO botón llamativo en el banner
             if (hayPendientes) {
                 listaPendientes.innerHTML = `
                     <button onclick="abrirModal('modal-pin')" 
@@ -441,12 +487,9 @@
             }
 
             document.getElementById('contenedor-pendientes').classList.toggle('hidden', !hayPendientes);
-            
-            // Re-asignar eventos del cursor a los botones nuevos generados dinámicamente
             rebindCursorHover();
         }
 
-        // Suscripción en tiempo real
         _supabase.channel('estudiantes-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'estudiantes' }, () => {
                 cargarRanking();
@@ -454,7 +497,6 @@
             })
             .subscribe();
 
-        // Carga inicial
         cargarRanking();
     </script>
 </body>
