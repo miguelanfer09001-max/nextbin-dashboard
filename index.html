@@ -1,175 +1,551 @@
-// ==========================================
-// CONFIGURACIÓN DE SUPABASE CLOUD
-// ==========================================
-const SUPABASE_URL = "https://eucyvoybdfdowspzkjvz.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU";
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXTBIN // BLADE RUNNER 2049 DASHBOARD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Orbitron & Rajdhani & Share Tech Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-amber: #ffb700;
+            --neon-pink: #ff0055;
+            --cyber-bg: #050811;
+            --panel-bg: rgba(10, 15, 28, 0.78);
+        }
 
-// Inicializar cliente de Supabase
-let supabaseClient;
-try {
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log("✅ Supabase inicializado correctamente.");
-} catch (err) {
-  console.error("❌ Error inicializando Supabase:", err);
-}
+        /* Ocultar cursor nativo para usar el cibernético en PC */
+        @media (pointer: fine) {
+            body { cursor: none; }
+            a, button, input { cursor: none; }
+        }
 
-// ==========================================
-// CARGAR TABLA DE CLASIFICACIÓN (LEADERBOARD)
-// ==========================================
-async function cargarLeaderboard() {
-  const tbody = document.getElementById("leaderboard-body");
-  if (!tbody) return;
+        body {
+            background-color: var(--cyber-bg);
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            
+            /* FILTRO DE LUZ EQUILIBRADO + FOTO TOKIO NEÓN HIPERREALISTA */
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.15), transparent 60%),
+                linear-gradient(to bottom, rgba(5, 8, 17, 0.65), rgba(5, 8, 17, 0.85)),
+                url('https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
 
-  try {
-    // Consultar los 10 mejores usuarios ordenados por puntos
-    const { data, error } = await supabaseClient
-      .from("usuarios")
-      .select("id, nombre, botellas, puntos")
-      .order("puntos", { ascending: false })
-      .limit(10);
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-mono-tech { font-family: 'Share Tech Mono', monospace; }
 
-    if (error) {
-      console.error("Error al obtener datos de Supabase:", error);
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="4" style="text-align: center; color: #ff3366;">
-            ❌ Error al conectar con Supabase. Verifique las políticas RLS.
-          </td>
-        </tr>
-      `;
-      return;
-    }
+        /* Panel HUD cristalizado */
+        .hud-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            clip-path: polygon(
+                0 15px, 15px 0, calc(100% - 15px) 0, 100% 15px, 
+                100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px)
+            );
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
 
-    // Si no hay usuarios registrados aún
-    if (!data || data.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="4" style="text-align: center; color: #ffb700;">
-            ⚠️ No hay datos registrados aún. ¡Sé el primero en reciclar!
-          </td>
-        </tr>
-      `;
-      return;
-    }
+        .hud-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+        }
 
-    // Renderizar las filas dinámicamente
-    tbody.innerHTML = "";
-    data.forEach((user, index) => {
-      const pos = index + 1;
-      let medalla = `#${pos}`;
-      if (pos === 1) medalla = "🥇 #1";
-      if (pos === 2) medalla = "🥈 #2";
-      if (pos === 3) medalla = "🥉 #3";
+        /* Esquinas neón */
+        .hud-corner-tl { position: absolute; top: 4px; left: 4px; width: 8px; height: 8px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
+        .hud-corner-tr { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-top: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
+        .hud-corner-bl { position: absolute; bottom: 4px; left: 4px; width: 8px; height: 8px; border-bottom: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
+        .hud-corner-br { position: absolute; bottom: 4px; right: 4px; width: 8px; height: 8px; border-bottom: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
 
-      const nombreMostrar = user.nombre ? user.nombre : `Usuario (${user.id.substring(0, 8)})`;
+        /* Efectos Neón */
+        .glow-cyan { text-shadow: 0 0 10px rgba(0, 240, 255, 0.7), 0 0 20px rgba(0, 240, 255, 0.4); }
+        .glow-amber { text-shadow: 0 0 10px rgba(255, 183, 0, 0.8), 0 0 20px rgba(255, 183, 0, 0.4); }
+        .border-glow-cyan { box-shadow: 0 0 15px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.1); }
 
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td style="font-weight: bold; color: ${pos <= 3 ? '#ffb700' : '#00f0ff'};">${medalla}</td>
-        <td>${nombreMostrar}</td>
-        <td style="text-align: center;">${user.botellas || 0} 🍾</td>
-        <td style="font-weight: bold; color: #00f0ff;">${user.puntos || 0} PTS</td>
-      `;
-      tbody.appendChild(tr);
-    });
+        /* Scanline CRT */
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent, transparent 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+            background-size: 100% 4px; pointer-events: none; z-index: 50; opacity: 0.5;
+        }
 
-  } catch (err) {
-    console.error("Excepción en cargarLeaderboard:", err);
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="4" style="text-align: center; color: #ff3366;">
-          ⚠️ Error inesperado de red. Revisa la consola (F12).
-        </td>
-      </tr>
-    `;
-  }
-}
+        #toast-cyber { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(100px); opacity: 0; }
+        #toast-cyber.active { transform: translateY(0); opacity: 1; }
 
-// ==========================================
-// PRE-REGISTRO CON QR
-// ==========================================
-async function guardarRegistroQR() {
-  const qrInput = document.getElementById("qr-code-input");
-  const nameInput = document.getElementById("qr-name-input");
+        /* CURSOR CIBERNÉTICO */
+        #cursor-dot {
+            position: fixed; top: 0; left: 0; width: 6px; height: 6px;
+            background-color: var(--neon-cyan); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 9999;
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+        #cursor-outline {
+            position: fixed; top: 0; left: 0; width: 30px; height: 30px;
+            border: 1px solid var(--neon-amber); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 9998;
+            transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s;
+        }
+        #cursor-outline.hover-state {
+            width: 45px; height: 45px;
+            background-color: rgba(0, 240, 255, 0.15);
+            border-color: var(--neon-cyan);
+        }
 
-  const qrCode = qrInput.value.trim();
-  const nombre = nameInput.value.trim();
+        /* SISTEMA DE LLUVIA NEÓN */
+        #rain-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none; overflow: hidden;
+        }
+        .raindrop {
+            position: absolute;
+            bottom: 100%;
+            width: 1.5px;
+            background: linear-gradient(to bottom, rgba(0, 240, 255, 0), rgba(0, 240, 255, 0.8));
+            animation: rain-fall linear infinite;
+        }
+        @keyframes rain-fall {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(110vh); }
+        }
 
-  if (!qrCode || !nombre) {
-    alert("⚠️ Por favor complete tanto el código QR como el Nombre.");
-    return;
-  }
+        /* ANIMACIÓN REVEAL SCROLL */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="relative">
+    
+    <!-- Lluvia Neón -->
+    <div id="rain-container"></div>
 
-  try {
-    const { data, error } = await supabaseClient
-      .from("usuarios")
-      .upsert([{ id: qrCode, nombre: nombre }], { onConflict: "id" });
+    <!-- Cursor Custom -->
+    <div class="hidden sm:block" id="cursor-dot"></div>
+    <div class="hidden sm:block" id="cursor-outline"></div>
 
-    if (error) {
-      alert("❌ Error al registrar: " + error.message);
-    } else {
-      alert("✅ ¡Registro con QR exitoso! Ahora puedes reciclar en NextBin.");
-      qrInput.value = "";
-      nameInput.value = "";
-      closeModal("modal-qr");
-      cargarLeaderboard(); // Recargar tabla
-    }
-  } catch (err) {
-    alert("❌ Error inesperado: " + err.message);
-  }
-}
+    <div class="scanline"></div>
 
-// ==========================================
-// VINCULAR USUARIO CON PIN DE 4 DÍGITOS
-// ==========================================
-async function vincularConPIN() {
-  const pinInput = document.getElementById("pin-code-input");
-  const nameInput = document.getElementById("pin-name-input");
+    <!-- Notification Toast -->
+    <div id="toast-cyber" class="fixed bottom-6 right-6 z-50 bg-slate-900/90 border border-cyan-400/60 p-4 rounded-lg shadow-2xl flex items-center gap-3 border-glow-cyan max-w-sm backdrop-blur-md">
+        <div class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></div>
+        <div>
+            <div class="text-xs font-mono-tech text-cyan-400 uppercase tracking-widest">// RECYCLING SYSTEM</div>
+            <div id="toast-msg" class="text-sm font-semibold text-white">Notificación...</div>
+        </div>
+    </div>
 
-  const pin = pinInput.value.trim();
-  const nombre = nameInput.value.trim();
+    <!-- ======================================================= -->
+    <!-- HERO SECTION INICIAL (PANTALLA DE BIENVENIDA)           -->
+    <!-- ======================================================= -->
+    <section id="hero-section" class="min-h-screen flex flex-col items-center justify-center text-center p-6 relative z-10">
+        <div class="hud-panel p-8 sm:p-12 max-w-3xl w-full border-glow-cyan">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
 
-  if (!pin || pin.length !== 4 || !nombre) {
-    alert("⚠️ Ingrese un PIN válido de 4 dígitos y su nombre completo.");
-    return;
-  }
+            <div class="inline-block px-3 py-1 rounded bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 font-mono-tech text-xs mb-4 uppercase tracking-widest animate-pulse">
+                // SYSTEM ONLINE // IOT SMART BIN SECTOR 11
+            </div>
 
-  try {
-    // Buscar el usuario temporal creado por el ESP32 con ese PIN
-    const { data, error } = await supabaseClient
-      .from("usuarios")
-      .update({ nombre: nombre })
-      .eq("pin_temp", pin)
-      .select();
+            <h1 class="text-6xl sm:text-8xl font-orbitron font-black text-cyan-400 glow-cyan tracking-wider mb-2">
+                NEXTBIN
+            </h1>
+            
+            <p class="text-amber-400 font-orbitron font-bold text-sm sm:text-base tracking-widest mb-6 glow-amber uppercase">
+                "El futuro del reciclaje no se espera, se programa."
+            </p>
 
-    if (error || !data || data.length === 0) {
-      alert("❌ PIN no encontrado o expirado. Verifique el código de la pantalla.");
-    } else {
-      alert(`✅ ¡Bienvenido ${nombre}! Tu carnet quedó vinculado con éxito.`);
-      pinInput.value = "";
-      nameInput.value = "";
-      closeModal("modal-pin");
-      cargarLeaderboard(); // Recargar tabla
-    }
-  } catch (err) {
-    alert("❌ Error inesperado: " + err.message);
-  }
-}
+            <p class="text-slate-300 font-mono-tech text-xs sm:text-sm max-w-xl mx-auto mb-8 leading-relaxed border-t border-b border-cyan-500/20 py-4">
+                Redefiniendo la sostenibilidad urbana mediante inteligencia IoT, gamificación en tiempo real y arquitectura de datos descentralizada.
+            </p>
 
-// ==========================================
-// INICIALIZACIÓN Y EVENTOS
-// ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-  // Cargar datos por primera vez
-  cargarLeaderboard();
+            <button onclick="scrollToDashboard()" 
+                class="cursor-interact px-8 py-4 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-orbitron font-bold text-sm hover:bg-cyan-400 hover:text-slate-950 transition-all tracking-widest glow-cyan uppercase flex items-center justify-center gap-3 mx-auto shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+                <span>INICIAR SISTEMA</span>
+                <span class="animate-bounce">↓</span>
+            </button>
+        </div>
+    </section>
 
-  // Auto-refrescar cada 4 segundos (Ideal para mostrar cambios en vivo durante la feria)
-  setInterval(cargarLeaderboard, 4000);
+    <!-- MODAL 1: PRE-REGISTRO CON QR -->
+    <div id="modal-qr" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden p-4">
+        <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
+            
+            <div class="flex items-center justify-between border-b border-cyan-500/30 pb-3 mb-4">
+                <h3 class="font-orbitron text-lg font-bold text-cyan-400 glow-cyan flex items-center gap-2">
+                    <span>📝</span> PRE-REGISTRAR CON QR
+                </h3>
+                <span class="text-[10px] font-mono-tech text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 px-2 py-0.5 rounded">DESDE CASA</span>
+            </div>
 
-  // Asignar eventos a los botones de los modales
-  const btnSaveQR = document.getElementById("btn-save-qr");
-  if (btnSaveQR) btnSaveQR.addEventListener("click", guardarRegistroQR);
+            <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
+                Escanee el QR de su carnet con el celular, copie la cadena obtenida y péguela aquí junto a su nombre:
+            </p>
 
-  const btnSavePIN = document.getElementById("btn-save-pin");
-  if (btnSavePIN) btnSavePIN.addEventListener("click", vincularConPIN);
-});
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">CÓDIGO // TEXTO DEL QR:</label>
+                    <input type="text" id="input-qr-codigo" placeholder="Ej: n0jNllSrAJLc7mU5dTq1..." 
+                        class="cursor-interact w-full bg-slate-900/90 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">NOMBRE COMPLETO:</label>
+                    <input type="text" id="input-qr-nombre" placeholder="Ej: Miguel Fernández" 
+                        class="cursor-interact w-full bg-slate-900/90 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModal('modal-qr')" class="cursor-interact px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
+                <button id="btn-guardar-qr" class="cursor-interact px-5 py-2 rounded font-orbitron font-bold text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-400 hover:bg-cyan-400 hover:text-slate-950 transition-all uppercase glow-cyan">Guardar Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VINCULACIÓN POR PIN SECRETO -->
+    <div id="modal-pin" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden p-4">
+        <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
+            
+            <div class="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-4">
+                <h3 class="font-orbitron text-lg font-bold text-amber-400 glow-amber flex items-center gap-2">
+                    <span>🔑</span> VINCULAR CON PIN
+                </h3>
+                <span class="text-[10px] font-mono-tech text-amber-400 bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 rounded">MODO SEGURO</span>
+            </div>
+
+            <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
+                Ingrese el código secreto de 4 dígitos generado en la pantalla de la caneca:
+            </p>
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-[11px] font-mono-tech text-amber-400 mb-1">PIN SECRETO (4 DÍGITOS):</label>
+                    <input type="password" id="input-pin-codigo" maxlength="4" placeholder="****" 
+                        class="cursor-interact w-full bg-slate-900/90 border border-amber-500/40 rounded px-4 py-2.5 text-amber-300 font-orbitron tracking-widest text-center text-xl focus:outline-none focus:border-amber-400">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">NOMBRE COMPLETO:</label>
+                    <input type="text" id="input-pin-nombre" placeholder="Ej: Pedrito Pérez" 
+                        class="cursor-interact w-full bg-slate-900/90 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModal('modal-pin')" class="cursor-interact px-4 py-2 rounded font-mono-tech text-xs text-slate-400 border border-slate-700 hover:text-white uppercase">Cancelar</button>
+                <button id="btn-guardar-pin" class="cursor-interact px-5 py-2 rounded font-orbitron font-bold text-xs bg-amber-500/20 text-amber-300 border border-amber-400 hover:bg-amber-400 hover:text-slate-950 transition-all uppercase glow-amber">Autorizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- DASHBOARD PRINCIPAL (REVELADO TRAS EL SCROLL)          -->
+    <!-- ======================================================= -->
+    <div id="dashboard-section" class="max-w-6xl mx-auto space-y-6 relative z-10 p-3 sm:p-6 lg:p-10 reveal-on-scroll">
+        <header class="hud-panel p-6 sm:p-8">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
+
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-4xl text-cyan-400 glow-cyan font-orbitron font-black">NEXTBIN</span>
+                        <span class="text-xs font-mono-tech px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/40 text-amber-400 font-bold uppercase tracking-wider">v2.049</span>
+                    </div>
+                    <p class="text-slate-300 text-xs sm:text-sm font-mono-tech mt-1 tracking-widest uppercase flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+                        RECYCLING INTELLIGENCE SYSTEM // SECTOR 11-COL
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <button onclick="abrirModal('modal-qr')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/10 border border-cyan-500/60 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-500/20 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2">
+                        <span>📝</span> PRE-REGISTRAR (QR)
+                    </button>
+                    <button onclick="abrirModal('modal-pin')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-amber-500/10 border border-amber-500/60 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-500/20 transition-all tracking-wider glow-amber flex items-center justify-center gap-2">
+                        <span>🔑</span> INGRESAR PIN SECRETO
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- BANNER DE CARNETS PENDIENTES -->
+        <div id="contenedor-pendientes" class="hud-panel p-4 hidden border-amber-500/40 bg-amber-500/10">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-amber-400 font-bold text-lg animate-pulse">⚠️</span>
+                    <div>
+                        <div class="text-xs font-orbitron font-bold text-amber-300">CARNETS NUEVOS EN ZONA DE ESPERA</div>
+                        <div class="text-[11px] font-mono-tech text-slate-300">Hay carnets escaneados en la caneca que requieren vinculación.</div>
+                    </div>
+                </div>
+                <div id="lista-pins-pendientes" class="flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+
+        <main class="hud-panel p-6 sm:p-8">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-cyan-500/20 pb-4 mb-6 gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-6 bg-cyan-400"></div>
+                    <h2 class="text-xl sm:text-2xl font-orbitron font-bold text-white tracking-wide uppercase">
+                        TOP RECYCLERS // LEADERBOARD
+                    </h2>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-cyan-400 font-mono-tech text-xs uppercase tracking-widest bg-slate-900/80">
+                            <th class="py-3 px-4">RANK</th>
+                            <th class="py-3 px-4">STUDENT // ID</th>
+                            <th class="py-3 px-4 text-center">BOTTLES</th>
+                            <th class="py-3 px-4 text-right">TOTAL POINTS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body" class="divide-y divide-slate-800/80 font-mono-tech text-sm">
+                        <tr>
+                            <td colspan="4" class="text-center py-12 text-slate-400 font-mono-tech">
+                                <div class="inline-block animate-spin mr-2">⚙</div> CARGANDO DATA NEURAL...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DESPLAZAMIENTO SUAVE AL DASHBOARD
+        function scrollToDashboard() {
+            document.getElementById('dashboard-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // OBSERVADOR DE SCROLL (ANIMACIÓN FADE IN / SLIDE UP)
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+
+        // MOTOR DE LLUVIA NEÓN
+        function createRain() {
+            const rainContainer = document.getElementById('rain-container');
+            const dropCount = 75;
+
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.classList.add('raindrop');
+                
+                drop.style.left = `${Math.random() * 100}vw`;
+                
+                const fallDuration = Math.random() * 1.5 + 0.6;
+                const fallDelay = Math.random() * 2;
+
+                drop.style.animationDuration = `${fallDuration}s`;
+                drop.style.animationDelay = `${fallDelay}s`;
+                drop.style.opacity = Math.random() * 0.7 + 0.3;
+                drop.style.height = `${Math.random() * 25 + 10}px`;
+
+                rainContainer.appendChild(drop);
+            }
+        }
+        createRain();
+
+        // CURSOR CIBERNÉTICO
+        const dot = document.getElementById('cursor-dot');
+        const outline = document.getElementById('cursor-outline');
+        
+        window.addEventListener('mousemove', (e) => {
+            dot.style.left = `${e.clientX}px`;
+            dot.style.top = `${e.clientY}px`;
+            
+            outline.animate({
+                left: `${e.clientX}px`,
+                top: `${e.clientY}px`
+            }, { duration: 350, fill: "forwards" });
+        });
+
+        function rebindCursorHover() {
+            document.querySelectorAll('.cursor-interact, button, input').forEach(el => {
+                if(!el.dataset.cursorBound) {
+                    el.addEventListener('mouseenter', () => outline.classList.add('hover-state'));
+                    el.addEventListener('mouseleave', () => outline.classList.remove('hover-state'));
+                    el.dataset.cursorBound = "true";
+                }
+            });
+        }
+        rebindCursorHover();
+
+        // CONEXIÓN SUPABASE
+        const SUPABASE_URL = 'https://eucyvoybdfdowspzkjvz.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU';
+
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-cyber');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.add('active');
+            setTimeout(() => { toast.classList.remove('active'); }, 4000);
+        }
+
+        function abrirModal(id) { 
+            document.getElementById(id).classList.remove('hidden'); 
+            if(id === 'modal-pin') document.getElementById('input-pin-codigo').value = '';
+        }
+        function cerrarModal(id) { 
+            document.getElementById(id).classList.add('hidden'); 
+        }
+
+        document.getElementById('btn-guardar-qr').addEventListener('click', async () => {
+            const cardId = document.getElementById('input-qr-codigo').value.trim();
+            const nombre = document.getElementById('input-qr-nombre').value.trim();
+
+            if (!cardId || !nombre) {
+                showToast('Complete el código QR y el nombre');
+                return;
+            }
+
+            const { data, error } = await _supabase.rpc('pre_registrar_estudiante', {
+                p_id: cardId,
+                p_nombre: nombre
+            });
+
+            if (error) {
+                showToast('Error al pre-registrar carnet');
+            } else {
+                cerrarModal('modal-qr');
+                showToast(`¡Carnet pre-registrado a ${nombre}!`);
+                cargarRanking();
+            }
+        });
+
+        document.getElementById('btn-guardar-pin').addEventListener('click', async () => {
+            const pin = document.getElementById('input-pin-codigo').value.trim();
+            const nombre = document.getElementById('input-pin-nombre').value.trim();
+
+            if (!pin || pin.length !== 4 || !nombre) {
+                showToast('Ingrese un PIN de 4 dígitos y el nombre');
+                return;
+            }
+
+            const { data: exito, error } = await _supabase.rpc('vincular_con_pin', {
+                p_pin: pin,
+                p_nombre: nombre
+            });
+
+            if (error || !exito) {
+                showToast('PIN incorrecto o expirado. Verifique la pantalla.');
+            } else {
+                cerrarModal('modal-pin');
+                showToast(`¡Carnet vinculado a ${nombre}!`);
+                cargarRanking();
+            }
+        });
+
+        async function cargarRanking() {
+            const { data, error } = await _supabase
+                .from('estudiantes')
+                .select('*')
+                .order('puntos', { ascending: false });
+
+            if (error) return;
+
+            const tbody = document.getElementById('tabla-body');
+            tbody.innerHTML = '';
+            const listaPendientes = document.getElementById('lista-pins-pendientes');
+            listaPendientes.innerHTML = '';
+            let hayPendientes = false;
+            let contadorPendientes = 0;
+
+            data.forEach((estudiante, index) => {
+                const esNuevo = estudiante.nombre === 'Usuario Nuevo' || !estudiante.nombre;
+
+                if (esNuevo && estudiante.pin) {
+                    hayPendientes = true;
+                    contadorPendientes++;
+                }
+
+                let rankBadge = `<span class="text-slate-400 font-bold">#${index + 1}</span>`;
+                let rowBgClass = 'hover:bg-cyan-500/10 transition-colors';
+                
+                if (index === 0 && !esNuevo) {
+                    rankBadge = `<span class="px-2.5 py-1 rounded bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold font-orbitron text-xs glow-amber">👑 #1 RANK</span>`;
+                    rowBgClass = 'bg-amber-500/10 hover:bg-amber-500/20 transition-colors border-l-2 border-amber-400';
+                }
+
+                const displayNombre = esNuevo ? `Usuario Pendiente ⚠️` : estudiante.nombre;
+                const nameColor = esNuevo ? 'text-amber-400 font-bold italic' : 'text-slate-100 font-bold';
+
+                tbody.innerHTML += `
+                    <tr class="${rowBgClass}">
+                        <td class="py-4 px-4 font-mono-tech">${rankBadge}</td>
+                        <td class="py-4 px-4">
+                            <div class="${nameColor} tracking-wide text-base">${displayNombre}</div>
+                            <div class="text-[10px] text-slate-400 font-mono-tech uppercase tracking-widest mt-0.5">ID // ${estudiante.id.substring(0, 15)}...</div>
+                        </td>
+                        <td class="py-4 px-4 text-center font-bold text-slate-200">
+                            <span class="bg-slate-900/90 px-3 py-1 rounded border border-slate-700/60 font-mono-tech">${estudiante.botellas || 0} 🍾</span>
+                        </td>
+                        <td class="py-4 px-4 text-right font-orbitron font-black text-cyan-400 glow-cyan tracking-widest text-lg">
+                            +${estudiante.puntos || 0} <span class="text-[10px] text-slate-400 font-mono-tech">PTS</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (hayPendientes) {
+                listaPendientes.innerHTML = `
+                    <button onclick="abrirModal('modal-pin')" 
+                        class="cursor-interact px-4 py-2 rounded bg-amber-500/20 border border-amber-400 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-400 hover:text-black transition-all glow-amber shadow-[0_0_15px_rgba(255,183,0,0.3)]">
+                        🔑 HAY ${contadorPendientes} CARNET(S) ESPERANDO - INGRESAR PIN SECRETO
+                    </button>
+                `;
+            }
+
+            document.getElementById('contenedor-pendientes').classList.toggle('hidden', !hayPendientes);
+            rebindCursorHover();
+        }
+
+        _supabase.channel('estudiantes-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'estudiantes' }, () => {
+                cargarRanking();
+                showToast('Base de datos sincronizada en tiempo real');
+            })
+            .subscribe();
+
+        cargarRanking();
+    </script>
+</body>
+</html>
