@@ -1,430 +1,175 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEXTBIN // IoT Smart Bin Intelligence</title>
-  
-  <!-- Fuentes Cyberpunk de Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  
-  <!-- Supabase JS Client CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+// ==========================================
+// CONFIGURACIÓN DE SUPABASE CLOUD
+// ==========================================
+const SUPABASE_URL = "https://eucyvoybdfdowspzkjvz.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU";
 
-  <!-- Archivo de Estilos Principal -->
-  <link rel="stylesheet" href="style.css">
+// Inicializar cliente de Supabase
+let supabaseClient;
+try {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log("✅ Supabase inicializado correctamente.");
+} catch (err) {
+  console.error("❌ Error inicializando Supabase:", err);
+}
 
-  <style>
-    /* RESET Y ESTILOS BASE DE SEGURIDAD CYBERPUNK */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+// ==========================================
+// CARGAR TABLA DE CLASIFICACIÓN (LEADERBOARD)
+// ==========================================
+async function cargarLeaderboard() {
+  const tbody = document.getElementById("leaderboard-body");
+  if (!tbody) return;
+
+  try {
+    // Consultar los 10 mejores usuarios ordenados por puntos
+    const { data, error } = await supabaseClient
+      .from("usuarios")
+      .select("id, nombre, botellas, puntos")
+      .order("puntos", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Error al obtener datos de Supabase:", error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; color: #ff3366;">
+            ❌ Error al conectar con Supabase. Verifique las políticas RLS.
+          </td>
+        </tr>
+      `;
+      return;
     }
 
-    body {
-      background-color: #050811;
-      color: #00f0ff;
-      font-family: 'Rajdhani', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow-x: hidden;
-      position: relative;
+    // Si no hay usuarios registrados aún
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; color: #ffb700;">
+            ⚠️ No hay datos registrados aún. ¡Sé el primero en reciclar!
+          </td>
+        </tr>
+      `;
+      return;
     }
 
-    /* Fondo de Lluvia Digital Canvas */
-    #rain-canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.35;
+    // Renderizar las filas dinámicamente
+    tbody.innerHTML = "";
+    data.forEach((user, index) => {
+      const pos = index + 1;
+      let medalla = `#${pos}`;
+      if (pos === 1) medalla = "🥇 #1";
+      if (pos === 2) medalla = "🥈 #2";
+      if (pos === 3) medalla = "🥉 #3";
+
+      const nombreMostrar = user.nombre ? user.nombre : `Usuario (${user.id.substring(0, 8)})`;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-weight: bold; color: ${pos <= 3 ? '#ffb700' : '#00f0ff'};">${medalla}</td>
+        <td>${nombreMostrar}</td>
+        <td style="text-align: center;">${user.botellas || 0} 🍾</td>
+        <td style="font-weight: bold; color: #00f0ff;">${user.puntos || 0} PTS</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error("Excepción en cargarLeaderboard:", err);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; color: #ff3366;">
+          ⚠️ Error inesperado de red. Revisa la consola (F12).
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// ==========================================
+// PRE-REGISTRO CON QR
+// ==========================================
+async function guardarRegistroQR() {
+  const qrInput = document.getElementById("qr-code-input");
+  const nameInput = document.getElementById("qr-name-input");
+
+  const qrCode = qrInput.value.trim();
+  const nombre = nameInput.value.trim();
+
+  if (!qrCode || !nombre) {
+    alert("⚠️ Por favor complete tanto el código QR como el Nombre.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("usuarios")
+      .upsert([{ id: qrCode, nombre: nombre }], { onConflict: "id" });
+
+    if (error) {
+      alert("❌ Error al registrar: " + error.message);
+    } else {
+      alert("✅ ¡Registro con QR exitoso! Ahora puedes reciclar en NextBin.");
+      qrInput.value = "";
+      nameInput.value = "";
+      closeModal("modal-qr");
+      cargarLeaderboard(); // Recargar tabla
     }
+  } catch (err) {
+    alert("❌ Error inesperado: " + err.message);
+  }
+}
 
-    /* Contenedor Principal HUD */
-    .hud-container {
-      position: relative;
-      z-index: 1;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 20px;
-      width: 100%;
-      flex: 1;
+// ==========================================
+// VINCULAR USUARIO CON PIN DE 4 DÍGITOS
+// ==========================================
+async function vincularConPIN() {
+  const pinInput = document.getElementById("pin-code-input");
+  const nameInput = document.getElementById("pin-name-input");
+
+  const pin = pinInput.value.trim();
+  const nombre = nameInput.value.trim();
+
+  if (!pin || pin.length !== 4 || !nombre) {
+    alert("⚠️ Ingrese un PIN válido de 4 dígitos y su nombre completo.");
+    return;
+  }
+
+  try {
+    // Buscar el usuario temporal creado por el ESP32 con ese PIN
+    const { data, error } = await supabaseClient
+      .from("usuarios")
+      .update({ nombre: nombre })
+      .eq("pin_temp", pin)
+      .select();
+
+    if (error || !data || data.length === 0) {
+      alert("❌ PIN no encontrado o expirado. Verifique el código de la pantalla.");
+    } else {
+      alert(`✅ ¡Bienvenido ${nombre}! Tu carnet quedó vinculado con éxito.`);
+      pinInput.value = "";
+      nameInput.value = "";
+      closeModal("modal-pin");
+      cargarLeaderboard(); // Recargar tabla
     }
+  } catch (err) {
+    alert("❌ Error inesperado: " + err.message);
+  }
+}
 
-    /* Encabezado Principal */
-    header.hud-header {
-      border-bottom: 2px solid #00f0ff;
-      padding-bottom: 15px;
-      margin-bottom: 25px;
-      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
-    }
+// ==========================================
+// INICIALIZACIÓN Y EVENTOS
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  // Cargar datos por primera vez
+  cargarLeaderboard();
 
-    .top-bar {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.85rem;
-      color: #ffb700;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
-    }
+  // Auto-refrescar cada 4 segundos (Ideal para mostrar cambios en vivo durante la feria)
+  setInterval(cargarLeaderboard, 4000);
 
-    h1.brand-title {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 2.8rem;
-      font-weight: 900;
-      letter-spacing: 4px;
-      color: #00f0ff;
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
-    }
+  // Asignar eventos a los botones de los modales
+  const btnSaveQR = document.getElementById("btn-save-qr");
+  if (btnSaveQR) btnSaveQR.addEventListener("click", guardarRegistroQR);
 
-    h1.brand-title span {
-      color: #ffb700;
-      text-shadow: 0 0 10px rgba(255, 183, 0, 0.7);
-    }
-
-    .tagline {
-      font-style: italic;
-      color: #a0c0d0;
-      margin-top: 5px;
-    }
-
-    /* Tarjetas del Panel HUD */
-    .hud-card {
-      background: rgba(5, 12, 26, 0.85);
-      border: 1px solid #00f0ff;
-      border-radius: 6px;
-      padding: 20px;
-      margin-bottom: 25px;
-      box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
-      backdrop-filter: blur(5px);
-    }
-
-    /* Inputs y Formularios Neón */
-    .cyber-input {
-      width: 100%;
-      background: rgba(0, 240, 255, 0.05);
-      border: 1px solid #00f0ff;
-      color: #00f0ff;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 1rem;
-      padding: 10px 14px;
-      margin-top: 6px;
-      margin-bottom: 15px;
-      border-radius: 4px;
-      outline: none;
-      box-shadow: inset 0 0 5px rgba(0, 240, 255, 0.2);
-    }
-
-    .cyber-input:focus {
-      border-color: #ffb700;
-      box-shadow: 0 0 8px rgba(255, 183, 0, 0.6);
-      color: #ffffff;
-    }
-
-    /* Botones Cyberpunk */
-    .cyber-btn {
-      background: rgba(0, 240, 255, 0.12);
-      border: 1px solid #00f0ff;
-      color: #00f0ff;
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 700;
-      font-size: 0.9rem;
-      padding: 12px 20px;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      transition: all 0.25s ease-in-out;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-    }
-
-    .cyber-btn:hover {
-      background: #00f0ff;
-      color: #050811;
-      box-shadow: 0 0 20px #00f0ff;
-      transform: translateY(-2px);
-    }
-
-    .cyber-btn.btn-amber {
-      border-color: #ffb700;
-      color: #ffb700;
-      background: rgba(255, 183, 0, 0.12);
-      box-shadow: 0 0 10px rgba(255, 183, 0, 0.3);
-    }
-
-    .cyber-btn.btn-amber:hover {
-      background: #ffb700;
-      color: #050811;
-      box-shadow: 0 0 20px #ffb700;
-    }
-
-    .cyber-btn.btn-cancel {
-      border-color: #ff3366;
-      color: #ff3366;
-      background: rgba(255, 51, 102, 0.1);
-    }
-
-    .cyber-btn.btn-cancel:hover {
-      background: #ff3366;
-      color: #ffffff;
-      box-shadow: 0 0 15px #ff3366;
-    }
-
-    /* Tabla de Clasificación / Leaderboard */
-    .leaderboard-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-      font-family: 'Share Tech Mono', monospace;
-    }
-
-    .leaderboard-table th {
-      background: rgba(0, 240, 255, 0.15);
-      color: #00f0ff;
-      text-align: left;
-      padding: 12px;
-      border-bottom: 2px solid #00f0ff;
-      text-transform: uppercase;
-    }
-
-    .leaderboard-table td {
-      padding: 12px;
-      border-bottom: 1px solid rgba(0, 240, 255, 0.15);
-      color: #e0f0ff;
-    }
-
-    .leaderboard-table tr:hover {
-      background: rgba(0, 240, 255, 0.08);
-    }
-
-    /* Ventanas Emergentes Modales */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(5, 8, 17, 0.88);
-      backdrop-filter: blur(8px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal-box {
-      width: 90%;
-      max-width: 550px;
-      background: #080f21;
-      border: 2px solid #00f0ff;
-      border-radius: 8px;
-      padding: 25px;
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
-    }
-
-    .modal-box.amber-theme {
-      border-color: #ffb700;
-      box-shadow: 0 0 30px rgba(255, 183, 0, 0.4);
-    }
-
-    .modal-header {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.3rem;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 20px;
-    }
-
-    /* Pie de página Fijo */
-    footer.hud-footer {
-      position: relative;
-      z-index: 10;
-      background: rgba(5, 8, 17, 0.95);
-      border-top: 1px solid #00f0ff;
-      padding: 15px 20px;
-      text-align: center;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-actions {
-      display: flex;
-      gap: 12px;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Canvas Animación de Lluvia Matrix/Cyberpunk -->
-  <canvas id="rain-canvas"></canvas>
-
-  <div class="hud-container">
-    
-    <!-- ENCABEZADO -->
-    <header class="hud-header">
-      <div class="top-bar">// SYSTEM ONLINE // IOT SMART BIN SECTOR 11-COL</div>
-      <h1 class="brand-title">NEXT<span>BIN</span></h1>
-      <p class="tagline">"El futuro del reciclaje no se espera, se programa."</p>
-      <p style="font-size: 0.95rem; color: #88a0c0; margin-top: 6px;">
-        Redefiniendo la sostenibilidad urbana mediante inteligencia IoT, gamificación en tiempo real y arquitectura de datos en la nube.
-      </p>
-    </header>
-
-    <!-- PANEL PRINCIPAL Y ACCIONES -->
-    <section class="hud-card">
-      <h2 style="font-family: 'Orbitron', sans-serif; font-size: 1.2rem; margin-bottom: 12px; color: #ffb700;">
-        ⚡ ACCIONES DE VINCULACIÓN
-      </h2>
-      <p style="margin-bottom: 15px; color: #c0d8f0;">
-        Seleccione el método de registro de su carnet escolar o ingrese su PIN secreto generado en la pantalla LCD de la caneca:
-      </p>
-      
-      <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-        <button class="cyber-btn" onclick="openModal('modal-qr')">
-          📱 PRE-REGISTRAR CON QR
-        </button>
-        <button class="cyber-btn btn-amber" onclick="openModal('modal-pin')">
-          🔑 VINCULAR CON PIN
-        </button>
-      </div>
-    </section>
-
-    <!-- TABLA DE CLASIFICACIÓN (LEADERBOARD) -->
-    <section class="hud-card">
-      <h2 style="font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: #00f0ff; margin-bottom: 10px;">
-        🏆 RANKING DE RECICLAJE EN TIEMPO REAL
-      </h2>
-      <div style="overflow-x: auto;">
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>POS</th>
-              <th>ESTUDIANTE / USUARIO</th>
-              <th>BOTELLAS</th>
-              <th>PUNTOS</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-body">
-            <!-- Filas dinámicas cargadas desde Supabase mediante app.js -->
-            <tr>
-              <td colspan="4" style="text-align: center; color: #ffb700;">
-                Cargando datos del servidor de Supabase...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- MODAL 1: PRE-REGISTRO CON QR -->
-  <div class="modal-overlay" id="modal-qr">
-    <div class="modal-box">
-      <div class="modal-header" style="color: #00f0ff;">
-        📱 PRE-REGISTRAR CON QR
-      </div>
-      <p style="font-size: 0.9rem; color: #a0c0e0; margin-bottom: 15px;">
-        Escanee el código QR de su carnet con el celular, copie la cadena obtenida y péguela aquí junto a su nombre completo:
-      </p>
-
-      <label style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem;">CÓDIGO // TEXTO DEL QR:</label>
-      <input type="text" id="qr-code-input" class="cyber-input" placeholder="Ej: n0jN11SrA1Lr7mU5d">
-
-      <label style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem;">NOMBRE COMPLETO:</label>
-      <input type="text" id="qr-name-input" class="cyber-input" placeholder="Ej: Miguel Fernández">
-
-      <div class="modal-actions">
-        <button class="cyber-btn btn-cancel" onclick="closeModal('modal-qr')">Cancelar</button>
-        <button class="cyber-btn" id="btn-save-qr">Guardar Registro</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 2: VINCULAR CON PIN -->
-  <div class="modal-overlay" id="modal-pin">
-    <div class="modal-box amber-theme">
-      <div class="modal-header" style="color: #ffb700;">
-        🔑 VINCULAR CON PIN (MODO SEGURO)
-      </div>
-      <p style="font-size: 0.9rem; color: #a0c0e0; margin-bottom: 15px;">
-        Ingrese el código secreto de 4 dígitos generado en la pantalla LCD de la caneca inteligente:
-      </p>
-
-      <label style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: #ffb700;">PIN SECRETO (4 DÍGITOS):</label>
-      <input type="text" id="pin-code-input" class="cyber-input" maxlength="4" placeholder="****" style="border-color: #ffb700;">
-
-      <label style="font-family: 'Share Tech Mono', monospace; font-size: 0.85rem;">NOMBRE COMPLETO:</label>
-      <input type="text" id="pin-name-input" class="cyber-input" placeholder="Ej: Pedrito Pérez">
-
-      <div class="modal-actions">
-        <button class="cyber-btn btn-cancel" onclick="closeModal('modal-pin')">Cancelar</button>
-        <button class="cyber-btn btn-amber" id="btn-save-pin">Autorizar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- PIE DE PÁGINA FIX / BOTTOM BAR -->
-  <footer class="hud-footer">
-    <div>
-      NEXTBIN v2.049 // RECYCLING INTELLIGENCE SYSTEM // SECTOR 11-COL
-    </div>
-    <div class="footer-actions">
-      <button class="cyber-btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="openModal('modal-qr')">
-        PRE-REGISTRAR (QR)
-      </button>
-      <button class="cyber-btn btn-amber" style="padding: 6px 12px; font-size: 0.75rem;" onclick="openModal('modal-pin')">
-        INGRESAR PIN SECRETO
-      </button>
-    </div>
-  </footer>
-
-  <!-- LÓGICA JAVASCRIPT DE MODALES Y APLICACIÓN -->
-  <script>
-    // Control de ventanas modales
-    function openModal(id) {
-      document.getElementById(id).classList.add('active');
-    }
-
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
-
-    // Cerrar modal al hacer clic en el fondo oscuro fuera del cuadro
-    window.onclick = function(event) {
-      if (event.target.classList.contains('modal-overlay')) {
-        event.target.classList.remove('active');
-      }
-    };
-  </script>
-
-  <!-- Script Principal del Proyecto -->
-  <script src="app.js"></script>
-</body>
-</html>
+  const btnSavePIN = document.getElementById("btn-save-pin");
+  if (btnSavePIN) btnSavePIN.addEventListener("click", vincularConPIN);
+});
