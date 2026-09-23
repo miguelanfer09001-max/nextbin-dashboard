@@ -12,17 +12,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <!-- Librería para lectura de QR con cámara del celular -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
     <style>
         :root {
             --neon-cyan: #00f0ff;
             --neon-amber: #ffb700;
             --neon-pink: #ff0055;
             --cyber-bg: #050811;
-            --panel-bg: rgba(10, 15, 28, 0.78);
+            --panel-bg: rgba(10, 15, 28, 0.85);
         }
 
-        /* Ocultar cursor nativo para usar el cibernético en PC */
+        /* Ocultar cursor nativo en PC */
         @media (pointer: fine) {
             body { cursor: none; }
             a, button, input { cursor: none; }
@@ -32,8 +34,6 @@
             background-color: var(--cyber-bg);
             color: #e2e8f0;
             font-family: 'Rajdhani', sans-serif;
-            
-            /* FILTRO DE LUZ EQUILIBRADO + FOTO TOKIO NEÓN HIPERREALISTA */
             background-image: 
                 radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.15), transparent 60%),
                 linear-gradient(to bottom, rgba(5, 8, 17, 0.65), rgba(5, 8, 17, 0.85)),
@@ -111,9 +111,7 @@
             z-index: 1; pointer-events: none; overflow: hidden;
         }
         .raindrop {
-            position: absolute;
-            bottom: 100%;
-            width: 1.5px;
+            position: absolute; bottom: 100%; width: 1.5px;
             background: linear-gradient(to bottom, rgba(0, 240, 255, 0), rgba(0, 240, 255, 0.8));
             animation: rain-fall linear infinite;
         }
@@ -122,15 +120,16 @@
             100% { transform: translateY(110vh); }
         }
 
-        /* ANIMACIÓN REVEAL SCROLL */
         .reveal-on-scroll {
-            opacity: 0;
-            transform: translateY(40px);
+            opacity: 0; transform: translateY(40px);
             transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .reveal-on-scroll.visible {
-            opacity: 1;
-            transform: translateY(0);
+        .reveal-on-scroll.visible { opacity: 1; transform: translateY(0); }
+
+        /* Ajustes para el escáner de cámara HTML5 */
+        #reader video {
+            border-radius: 8px;
+            border: 1px solid var(--neon-cyan);
         }
     </style>
 </head>
@@ -154,9 +153,7 @@
         </div>
     </div>
 
-    <!-- ======================================================= -->
-    <!-- HERO SECTION INICIAL (PANTALLA DE BIENVENIDA)           -->
-    <!-- ======================================================= -->
+    <!-- HERO SECTION (BIENVENIDA) -->
     <section id="hero-section" class="min-h-screen flex flex-col items-center justify-center text-center p-6 relative z-10">
         <div class="hud-panel p-8 sm:p-12 max-w-3xl w-full border-glow-cyan">
             <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
@@ -186,7 +183,33 @@
         </div>
     </section>
 
-    <!-- MODAL 1: PRE-REGISTRO CON QR -->
+    <!-- MODAL 1: CÁMARA ESCÁNER QR EN VIVO -->
+    <div id="modal-camara" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md hidden p-4">
+        <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan text-center">
+            <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
+            <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
+
+            <div class="flex items-center justify-between border-b border-cyan-500/30 pb-3 mb-4">
+                <h3 class="font-orbitron text-lg font-bold text-cyan-400 glow-cyan flex items-center gap-2">
+                    <span>📷</span> ESCANEAR CARNET CON CÁMARA
+                </h3>
+                <span class="text-[10px] font-mono-tech text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 px-2 py-0.5 rounded">EN VIVO</span>
+            </div>
+
+            <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
+                Apunte la cámara de su celular al código QR impreso en su carnet:
+            </p>
+
+            <!-- Contenedor del video del QR -->
+            <div id="reader" class="w-full bg-slate-950 border border-cyan-500/40 rounded-lg overflow-hidden mb-4"></div>
+
+            <button onclick="cerrarCamara()" class="cursor-interact w-full py-3 rounded font-mono-tech text-xs text-rose-400 border border-rose-500/40 hover:bg-rose-500/20 transition-all uppercase">
+                Cancelar Escaneo
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PRE-REGISTRO CON QR (MANUAL) -->
     <div id="modal-qr" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden p-4">
         <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan">
             <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
@@ -200,13 +223,13 @@
             </div>
 
             <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
-                Escanee el QR de su carnet con el celular, copie la cadena obtenida y péguela aquí junto a su nombre:
+                Pague o ingrese el texto de su carnet manualmente junto a su nombre completo:
             </p>
 
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-[11px] font-mono-tech text-cyan-400 mb-1">CÓDIGO // TEXTO DEL QR:</label>
-                    <input type="text" id="input-qr-codigo" placeholder="Ej: n0jNllSrAJLc7mU5dTq1..." 
+                    <input type="text" id="input-qr-codigo" placeholder="Ej: 10023456" 
                         class="cursor-interact w-full bg-slate-900/90 border border-cyan-500/40 rounded px-4 py-2 text-white font-mono-tech text-xs focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
@@ -223,7 +246,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: VINCULACIÓN POR PIN SECRETO -->
+    <!-- MODAL 3: VINCULACIÓN POR PIN SECRETO -->
     <div id="modal-pin" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden p-4">
         <div class="hud-panel p-6 sm:p-8 w-full max-w-md relative border-glow-cyan">
             <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
@@ -260,10 +283,25 @@
         </div>
     </div>
 
-    <!-- ======================================================= -->
-    <!-- DASHBOARD PRINCIPAL (REVELADO TRAS EL SCROLL)          -->
-    <!-- ======================================================= -->
+    <!-- DASHBOARD PRINCIPAL -->
     <div id="dashboard-section" class="max-w-6xl mx-auto space-y-6 relative z-10 p-3 sm:p-6 lg:p-10 reveal-on-scroll">
+        
+        <!-- BANNER DE USUARIO ACTIVO (LOCALSTORAGE) -->
+        <div id="user-banner" class="hud-panel p-4 hidden border-cyan-400/50 bg-cyan-500/10">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-xl">👤</div>
+                    <div>
+                        <div id="greeting-text" class="text-base font-orbitron font-bold text-cyan-300 glow-cyan">¡Hola, Usuario! 👋</div>
+                        <div class="text-xs font-mono-tech text-slate-300">Sesión iniciada en este dispositivo</div>
+                    </div>
+                </div>
+                <button onclick="cerrarSesionUsuario()" class="cursor-interact px-3 py-1.5 rounded border border-rose-500/50 text-rose-300 font-mono-tech text-xs hover:bg-rose-500/20 transition-all uppercase">
+                    Cambiar Usuario / Salir
+                </button>
+            </div>
+        </div>
+
         <header class="hud-panel p-6 sm:p-8">
             <div class="hud-corner-tl"></div><div class="hud-corner-tr"></div>
             <div class="hud-corner-bl"></div><div class="hud-corner-br"></div>
@@ -280,12 +318,16 @@
                     </p>
                 </div>
 
+                <!-- Botones Principales -->
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <button onclick="abrirCamaraQR()" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-400 hover:text-slate-950 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                        <span>📷</span> ESCANEAR (CÁMARA)
+                    </button>
                     <button onclick="abrirModal('modal-qr')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/10 border border-cyan-500/60 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-500/20 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2">
-                        <span>📝</span> PRE-REGISTRAR (QR)
+                        <span>📝</span> PRE-REGISTRAR
                     </button>
                     <button onclick="abrirModal('modal-pin')" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-amber-500/10 border border-amber-500/60 text-amber-300 font-orbitron font-bold text-xs hover:bg-amber-500/20 transition-all tracking-wider glow-amber flex items-center justify-center gap-2">
-                        <span>🔑</span> INGRESAR PIN SECRETO
+                        <span>🔑</span> INGRESAR PIN
                     </button>
                 </div>
             </div>
@@ -340,19 +382,114 @@
         </main>
     </div>
 
+    <!-- MOTOR LÓGICO JAVASCRIPT -->
     <script>
-        // DESPLAZAMIENTO SUAVE AL DASHBOARD
+        // CONEXIÓN SUPABASE
+        const SUPABASE_URL = 'https://eucyvoybdfdowspzkjvz.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let html5QrcodeScanner = null;
+
+        // VERIFICAR SESIÓN EN LOCALSTORAGE
+        document.addEventListener("DOMContentLoaded", () => {
+            verificarUsuarioGuardado();
+        });
+
+        function verificarUsuarioGuardado() {
+            const nombreGuardado = localStorage.getItem("nextbin_user_name");
+            const banner = document.getElementById("user-banner");
+            const greetingText = document.getElementById("greeting-text");
+
+            if (nombreGuardado && banner && greetingText) {
+                greetingText.innerText = `¡Hola, ${nombreGuardado}! 👋`;
+                banner.classList.remove("hidden");
+            } else if (banner) {
+                banner.classList.add("hidden");
+            }
+        }
+
+        function guardarSesionUsuario(idCarnet, nombre) {
+            localStorage.setItem("nextbin_user_id", idCarnet);
+            localStorage.setItem("nextbin_user_name", nombre);
+            verificarUsuarioGuardado();
+        }
+
+        function cerrarSesionUsuario() {
+            localStorage.removeItem("nextbin_user_id");
+            localStorage.removeItem("nextbin_user_name");
+            verificarUsuarioGuardado();
+            showToast("Sesión del dispositivo cerrada");
+        }
+
+        // CONTROL DE CÁMARA QR
+        function abrirCamaraQR() {
+            document.getElementById('modal-camara').classList.remove('hidden');
+
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", 
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                /* verbose= */ false
+            );
+
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        async function onScanSuccess(decodedText) {
+            cerrarCamara();
+            showToast(`QR Detectado: ${decodedText.substring(0, 10)}...`);
+
+            // Intentar procesar en Supabase
+            const { data, error } = await _supabase.rpc('registrar_reciclaje', {
+                p_id: decodedText,
+                p_puntos: 0,
+                p_botellas: 0
+            });
+
+            if (error) {
+                showToast('Error al conectar con la base de datos');
+                return;
+            }
+
+            // Si devuelve un PIN de 4 dígitos, es un usuario nuevo
+            if (data && data.length === 4) {
+                const nombre = prompt(`¡Carnet detectado! Tu PIN es: ${data}\nIngresa tu nombre para registrarte:`);
+                if (nombre) {
+                    await _supabase.rpc('vincular_con_pin', { p_pin: data, p_nombre: nombre });
+                    guardarSesionUsuario(decodedText, nombre);
+                    showToast(`¡Bienvenido/a ${nombre}! Registro exitoso.`);
+                }
+            } else {
+                // Usuario ya registrado
+                const nombreGuardado = localStorage.getItem("nextbin_user_name") || "Reciclador";
+                guardarSesionUsuario(decodedText, nombreGuardado);
+                showToast(`¡Carnet verificado! Listo para reciclar.`);
+            }
+
+            cargarRanking();
+        }
+
+        function onScanFailure(error) {
+            // Silencioso durante el escaneo cuadro por cuadro
+        }
+
+        function cerrarCamara() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(err => console.error(err));
+            }
+            document.getElementById('modal-camara').classList.add('hidden');
+        }
+
+        // DESPLAZAMIENTO SUAVE
         function scrollToDashboard() {
             document.getElementById('dashboard-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // OBSERVADOR DE SCROLL (ANIMACIÓN FADE IN / SLIDE UP)
+        // OBSERVADOR DE SCROLL
         const observerOptions = { threshold: 0.1 };
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
+                if (entry.isIntersecting) entry.target.classList.add('visible');
             });
         }, observerOptions);
 
@@ -366,7 +503,6 @@
             for (let i = 0; i < dropCount; i++) {
                 const drop = document.createElement('div');
                 drop.classList.add('raindrop');
-                
                 drop.style.left = `${Math.random() * 100}vw`;
                 
                 const fallDuration = Math.random() * 1.5 + 0.6;
@@ -407,12 +543,6 @@
         }
         rebindCursorHover();
 
-        // CONEXIÓN SUPABASE
-        const SUPABASE_URL = 'https://eucyvoybdfdowspzkjvz.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1Y3l2b3liZGZkb3dzcHpranZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTcyNDcsImV4cCI6MjEwNDg5MzI0N30.f_t5jmcuJIFqeifqzvMF5dWEUgj1sqY0V6Ho2Uls1uU';
-
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         function showToast(msg) {
             const toast = document.getElementById('toast-cyber');
             document.getElementById('toast-msg').innerText = msg;
@@ -428,6 +558,7 @@
             document.getElementById(id).classList.add('hidden'); 
         }
 
+        // EVENTOS DE BOTONES EN MODALES
         document.getElementById('btn-guardar-qr').addEventListener('click', async () => {
             const cardId = document.getElementById('input-qr-codigo').value.trim();
             const nombre = document.getElementById('input-qr-nombre').value.trim();
@@ -445,6 +576,7 @@
             if (error) {
                 showToast('Error al pre-registrar carnet');
             } else {
+                guardarSesionUsuario(cardId, nombre);
                 cerrarModal('modal-qr');
                 showToast(`¡Carnet pre-registrado a ${nombre}!`);
                 cargarRanking();
@@ -468,12 +600,14 @@
             if (error || !exito) {
                 showToast('PIN incorrecto o expirado. Verifique la pantalla.');
             } else {
+                guardarSesionUsuario(pin, nombre);
                 cerrarModal('modal-pin');
                 showToast(`¡Carnet vinculado a ${nombre}!`);
                 cargarRanking();
             }
         });
 
+        // CARGA Y RENDERIZADO DEL RANKING EN TIEMPO REAL
         async function cargarRanking() {
             const { data, error } = await _supabase
                 .from('estudiantes')
@@ -538,6 +672,7 @@
             rebindCursorHover();
         }
 
+        // CANAL REALTIME CON SUPABASE
         _supabase.channel('estudiantes-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'estudiantes' }, () => {
                 cargarRanking();
@@ -545,6 +680,7 @@
             })
             .subscribe();
 
+        // Carga inicial
         cargarRanking();
     </script>
 </body>
