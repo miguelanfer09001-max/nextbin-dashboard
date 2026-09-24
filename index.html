@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Librería para lectura de QR con cámara del celular -->
+    <!-- Librería para lectura de QR con cámara -->
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
@@ -223,7 +223,7 @@
             </div>
 
             <p class="text-xs font-mono-tech text-slate-300 mb-4 uppercase tracking-wider">
-                Pague o ingrese el texto de su carnet manualmente junto a su nombre completo:
+                Pegue o ingrese el texto de su carnet manualmente junto a su nombre completo:
             </p>
 
             <div class="space-y-4 mb-6">
@@ -320,6 +320,12 @@
 
                 <!-- Botones Principales -->
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <!-- BOTÓN DE CONEXIÓN WEB SERIAL CON ESP32 -->
+                    <button id="btn-conectar-esp" onclick="conectarESP32()" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-orbitron font-bold text-xs hover:bg-emerald-400 hover:text-slate-950 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                        <span id="esp-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span id="esp-status-text">🔌 CONECTAR ESP32</span>
+                    </button>
+
                     <button onclick="abrirCamaraQR()" class="cursor-interact flex-1 sm:flex-none px-4 py-3 rounded bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-orbitron font-bold text-xs hover:bg-cyan-400 hover:text-slate-950 transition-all tracking-wider glow-cyan flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.3)]">
                         <span>📷</span> ESCANEAR (CÁMARA)
                     </button>
@@ -391,6 +397,52 @@
 
         let html5QrcodeScanner = null;
 
+        // VARIABLES DE CONEXIÓN WEB SERIAL (ESP32)
+        let serialPort = null;
+        let serialWriter = null;
+
+        // FUNCIÓN PARA CONECTAR CON LA ESP32 VÍA USB SERIAL
+        async function conectarESP32() {
+            if (!("serial" in navigator)) {
+                showToast("Navegador sin Web Serial API. Usa Chrome o Edge.");
+                return;
+            }
+
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+
+                const textEncoder = new TextEncoderStream();
+                const writableStreamClosed = textEncoder.readable.pipeTo(serialPort.writable);
+                serialWriter = textEncoder.writable.getWriter();
+
+                document.getElementById("esp-status-dot").className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                document.getElementById("esp-status-text").innerText = "✔ ESP32 LISTO";
+                document.getElementById("btn-conectar-esp").classList.replace("bg-emerald-500/20", "bg-emerald-500/40");
+                
+                showToast("ESP32 conectado exitosamente vía USB Serial");
+            } catch (err) {
+                console.error("Error al conectar Web Serial:", err);
+                showToast("Error al conectar la ESP32");
+            }
+        }
+
+        // FUNCIÓN PARA TRANSMITIR EL CARNET A LA ESP32 POR SERIAL
+        async function enviarCarnetESP32(idCarnet) {
+            if (serialWriter) {
+                try {
+                    await serialWriter.write(idCarnet.trim() + "\n");
+                    console.log("Transmitido a ESP32 por USB:", idCarnet);
+                    showToast(`Carnet enviado a la caneca: ${idCarnet.substring(0, 10)}...`);
+                } catch (err) {
+                    console.error("Error al escribir en Serial:", err);
+                    showToast("Error de transmisión hacia la ESP32");
+                }
+            } else {
+                console.log("ESP32 no conectada por Serial. Operando únicamente en la nube.");
+            }
+        }
+
         // VERIFICAR SESIÓN EN LOCALSTORAGE
         document.addEventListener("DOMContentLoaded", () => {
             verificarUsuarioGuardado();
@@ -439,7 +491,10 @@
             cerrarCamara();
             showToast(`QR Detectado: ${decodedText.substring(0, 10)}...`);
 
-            // Intentar procesar en Supabase
+            // 1. TRANSMITIR A LA ESP32 VÍA USB SI ESTÁ CONECTADA
+            await enviarCarnetESP32(decodedText);
+
+            // 2. PROCESAR EN SUPABASE
             const { data, error } = await _supabase.rpc('registrar_reciclaje', {
                 p_id: decodedText,
                 p_puntos: 0,
@@ -567,6 +622,9 @@
                 showToast('Complete el código QR y el nombre');
                 return;
             }
+
+            // Transmitir a la ESP32 por Serial si está conectada
+            await enviarCarnetESP32(cardId);
 
             const { data, error } = await _supabase.rpc('pre_registrar_estudiante', {
                 p_id: cardId,
